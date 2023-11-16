@@ -26,55 +26,53 @@ once the query has been executed, it will check wether the last_modified_time ti
 
 
 
-  import json
+import json
 import schedule
 import time
-from google.cloud import bigquery  # Make sure to install the Google Cloud BigQuery package
+from datetime import datetime, timedelta
+import requests
 
-def read_json_schedule(file_path):
+def read_json_file(file_path):
     with open(file_path, 'r') as file:
         data = json.load(file)
-        return data['schedule']
+    return data['schedule']
 
-def run_sql_query(table_id):
-    client = bigquery.Client()
+def clear_previous_schedules():
+    schedule.clear()
 
-    query = f"""
-        SELECT TIMESTAMP_MILLIS(last_modified_time) AS last_modified
-        FROM `project_id.dataset.{table_id}`
-    """
+def run_query_and_send_email(table_id, frequency):
+    # Replace this with your actual SQL query execution logic
+    # For demonstration purposes, just printing the query
+    query = f"SELECT TIMESTAMP_MILLIS(last_modified_time) AS last_modified FROM project_id.dataset.{table_id}"
+    print(f"Running SQL query: {query}")
 
-    query_job = client.query(query)
-    result = query_job.result()
+    # Replace this with your actual API call logic to send email
+    # For demonstration purposes, just printing the email send
+    email_api_url = "https://example.com/send-email"
+    print(f"Sending email via API: {email_api_url}")
 
-    return result[0]['last_modified']
+def job_handler(table_id, frequency):
+    run_query_and_send_email(table_id, frequency)
 
-def send_email(table_id):
-    # Replace this with your email sending logic
-    print(f"Sending email for table: {table_id}")
+def setup_schedules(schedule_data):
+    for entry in schedule_data:
+        table_id = entry['tableid']
+        frequency = int(entry['frequency'])
+        schedule.every(frequency).seconds.do(job_handler, table_id, frequency)
 
-def check_and_send_email(schedule_item):
-    table_id = schedule_item['tableid']
-    frequency = int(schedule_item['frequency'])
+def main(json_file_path):
+    schedule_data = read_json_file(json_file_path)
 
-    last_modified_time = run_sql_query(table_id)
+    # Clear previous schedules
+    clear_previous_schedules()
 
-    if time.time() - last_modified_time < frequency:
-        send_email(table_id)
-
-def main():
-    file_path = 'your_json_file_path.json'
-    schedules = read_json_schedule(file_path)
-
-    for schedule_item in schedules:
-        table_id = schedule_item['tableid']
-        frequency = int(schedule_item['frequency'])
-
-        schedule.every(frequency).seconds.do(check_and_send_email, schedule_item)
+    # Set up new schedules
+    setup_schedules(schedule_data)
 
     while True:
         schedule.run_pending()
         time.sleep(1)
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    json_file_path = "path/to/your/json/file.json"
+    main(json_file_path)
