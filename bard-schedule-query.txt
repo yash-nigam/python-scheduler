@@ -1,0 +1,57 @@
+import json
+import schedule
+import time
+import requests
+
+def check_for_updates(table_id, frequency):
+    # Construct the SQL query to get the last_modified_time
+    query = f"SELECT TIMESTAMP_MILLIS(last_modified_time) AS last_modified FROM project_id.dataset.{table_id}"
+    # Execute the SQL query and get the last_modified_time
+    last_modified_time = execute_sql_query(query)
+
+    # Check if the last_modified_time is less than the required refresh frequency
+    if last_modified_time < time.time() - frequency:
+        # Send an email notification
+        send_email_notification(table_id)
+
+def send_email_notification(table_id):
+    # Construct the email notification message
+    message = f"Table {table_id} has been updated. Please review the changes."
+
+    # Send the email notification using an email API
+    send_email(message)
+
+def execute_sql_query(query):
+    # Implement the logic to execute the SQL query and retrieve the last_modified_time
+    # Replace this with your actual SQL query execution code
+    last_modified_time = 1673801200000  # Replace with the actual last_modified_time value
+    return last_modified_time
+
+def send_email(message):
+    # Implement the logic to send an email using an email API
+    # Replace this with your actual email sending code
+    print("Sending email notification:", message)
+
+def read_json_file(filename):
+    with open(filename) as f:
+        schedule_data = json.load(f)
+
+    return schedule_data
+
+def create_schedules(schedule_data):
+    for schedule_obj in schedule_data["schedule"]:
+        table_id = schedule_obj["tableid"]
+        frequency = int(schedule_obj["frequency"])
+
+        # Create a schedule using the table_id and frequency
+        schedule.every(frequency).seconds.do(check_for_updates, table_id, frequency)
+
+def start_scheduler():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+if __name__ == "__main__":
+    schedule_data = read_json_file("schedule.json")
+    create_schedules(schedule_data)
+    start_scheduler()
